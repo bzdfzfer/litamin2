@@ -10,7 +10,7 @@ Eigen3
 
 ## Build.
 ``` 
-makedir -p litamin_ws/src/ && cd litamin_ws/src/
+mkdir -p litamin_ws/src/ && cd litamin_ws/src/
 git clone https://github.com/bzdfzfer/litamin2
 cd ~/litamin_ws/ && catkin build
 
