@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>litamin2</name>
+  <version>0.0.0</version>
+  <description>A implementation of litamin laser scan matching algorithm. </description>
+
+  <maintainer email="865311461@qq.com">bzdfzfer</maintainer>
+
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <export>
+  </export>
+</package>
