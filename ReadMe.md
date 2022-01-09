@@ -25,7 +25,7 @@ rosrun litamin2 litamin2_align ~/litamin_ws/src/litamin2/data/251370668.pcd ~/li
 
 ## Results.
 Voxel resolution is set to 0.5m.
-[aligned results](data/litamin2_results.png).
+![aligned results](data/litamin2_results.png).
 - [GT] Two scan transformation matrix:
 ```
     0.999941    0.0108432 -0.000635437     0.485657
