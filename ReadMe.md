@@ -1,5 +1,5 @@
 # LITAMIN2
-This package is naive implementation of litamin2 point cloud matching algorithm.
+This package is an implementation of litamin2 point cloud matching algorithm.
 
 
 ## Dependencies.
@@ -24,7 +24,7 @@ rosrun litamin2 litamin2_align ~/litamin_ws/src/litamin2/data/251370668.pcd ~/li
 ```
 
 ## Results.
-map resolution is set to 0.5m.
+Voxel resolution is set to 0.5m.
 [aligned results](data/litamin2_results.png).
 - [GT] Two scan transformation matrix:
 ```
