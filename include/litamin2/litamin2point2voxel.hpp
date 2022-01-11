@@ -1,5 +1,5 @@
-#ifndef LITAMIN2_HPP
-#define LITAMIN2_HPP
+#ifndef LITAMIN2POINT2VOXEL_HPP
+#define LITAMIN2POINT2VOXEL_HPP
 
 #include <unordered_map>
 
@@ -20,7 +20,7 @@ using namespace fast_gicp;
 namespace litamin{
 
 template<typename PointSource, typename PointTarget> 
-class LiTAMIN2: public FastGICP<PointSource, PointTarget> {
+class LiTAMIN2Point2Voxel: public FastGICP<PointSource, PointTarget> {
 public:
   using Scalar = float;
   using Matrix4 = typename pcl::Registration<PointSource, PointTarget, Scalar>::Matrix4;
@@ -52,8 +52,8 @@ protected:
   using FastGICP<PointSource, PointTarget>::target_covs_;
 
 public:
-  LiTAMIN2();
-  virtual ~LiTAMIN2() override;
+  LiTAMIN2Point2Voxel();
+  virtual ~LiTAMIN2Point2Voxel() override;
 
   void setResolution(double resolution);
   void setVoxelAccumulationMode(VoxelAccumulationMode mode);
@@ -78,8 +78,7 @@ protected:
   std::unique_ptr<GaussianVoxelMap<PointTarget>> source_voxelmap_;
   std::unique_ptr<GaussianVoxelMap<PointTarget>> target_voxelmap_;
 
-  // std::vector<std::pair<int, GaussianVoxel::Ptr>> voxel_correspondences_;
-  std::vector<std::pair<GaussianVoxel::Ptr, GaussianVoxel::Ptr>> voxel_correspondences_;
+  std::vector<std::pair<int, GaussianVoxel::Ptr>> voxel_correspondences_;
   std::vector<Eigen::Matrix4d, Eigen::aligned_allocator<Eigen::Matrix4d>> voxel_mahalanobis_;
 
 };

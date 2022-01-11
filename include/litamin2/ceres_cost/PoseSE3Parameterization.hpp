@@ -9,7 +9,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 
-Eigen::Matrix3d skew(Eigen::Vector3d& mat_in) {
+inline Eigen::Matrix3d skew(Eigen::Vector3d& mat_in) {
   Eigen::Matrix<double, 3, 3> skew_mat;
   skew_mat.setZero();
   skew_mat(0, 1) = -mat_in(2);
@@ -21,7 +21,7 @@ Eigen::Matrix3d skew(Eigen::Vector3d& mat_in) {
   return skew_mat;
 }
 
-void getTransformFromSe3(const Eigen::Matrix<double, 6, 1>& se3, Eigen::Quaterniond& q, Eigen::Vector3d& t) {
+inline void getTransformFromSe3(const Eigen::Matrix<double, 6, 1>& se3, Eigen::Quaterniond& q, Eigen::Vector3d& t) {
   Eigen::Vector3d omega(se3.data());
   Eigen::Vector3d upsilon(se3.data() + 3);
   Eigen::Matrix3d Omega = skew(omega);

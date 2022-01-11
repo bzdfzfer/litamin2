@@ -16,7 +16,7 @@
 
 #include <fast_gicp/gicp/fast_gicp.hpp>
 #include "fast_gicp/gicp/impl/fast_gicp_impl.hpp"
-#include <litamin2/litamin2.hpp>
+#include <litamin2/litamin2point2voxel.hpp>
 
 
 
@@ -161,8 +161,8 @@ int main(int argc, char** argv) {
 
   std::cout << "target:" << target_cloud->size() << "[pts] source:" << source_cloud->size() << "[pts]" << std::endl;
 
-  std::cout << "--- litamin2_test ---" << std::endl;
-  litamin::LiTAMIN2<pcl::PointXYZ, pcl::PointXYZ> litamin2_test;
+  std::cout << "--- litamin2point2voxel_test ---" << std::endl;
+  litamin::LiTAMIN2Point2Voxel<pcl::PointXYZ, pcl::PointXYZ> litamin2_test;
   // fast_gicp uses all the CPU cores by default
   litamin2_test.setNumThreads(8);
   litamin2_test.setMaxCorrespondenceDistance(0.5);
@@ -179,9 +179,8 @@ int main(int argc, char** argv) {
   // fgicp_ceres.setLSQType(fast_gicp::LSQ_OPTIMIZER_TYPE::CeresDogleg);
   // test(fgicp_ceres, target_cloud, source_cloud);
 
-  std::cout << "--- litamin2_ceres ---" << std::endl;
-  litamin::LiTAMIN2<pcl::PointXYZ, pcl::PointXYZ> litamin2_ceres;
-  // fast_gicp uses all the CPU cores by default
+  std::cout << "--- litamin2point2voxel_ceres ---" << std::endl;
+  litamin::LiTAMIN2Point2Voxel<pcl::PointXYZ, pcl::PointXYZ> litamin2_ceres;
   litamin2_ceres.setNumThreads(8);
   litamin2_ceres.setTransformationEpsilon(1e-2);
   litamin2_ceres.setMaxCorrespondenceDistance(0.5);
@@ -194,10 +193,11 @@ int main(int argc, char** argv) {
 
 
   pcl::visualization::PCLVisualizer vis;
+  vis.initCameraParameters();
   vis.setCameraPosition(15.5219, 6.13405, 22.536,   8.258, -0.376825, -0.895555,    0.0226091, 0.961419, -0.274156);
   vis.setCameraFieldOfView(0.523599);
   vis.setCameraClipDistances(0.00522511, 50); 
-  
+
   vis.addPointCloud<pcl::PointXYZ>(source_cloud, 
     pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>(source_cloud, 255.0, 255.0, 255.0), 
     "source");

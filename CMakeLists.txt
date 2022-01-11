@@ -38,6 +38,7 @@ endif()
 add_library(litamin SHARED
 	src/litamin2/litamin2.cpp
 	src/fast_gicp/gicp/lsq_registration.cpp
+	src/litamin2/litamin2point2voxel.cpp
 )
 target_link_libraries(litamin
 	${PCL_LIBRARIES}
@@ -50,9 +51,21 @@ target_include_directories(litamin PUBLIC
 )
 
 
+########### TEST 
+#######################################################
 
+# this is voxel to voxel matching.
 add_executable(litamin2_align test/test_align_with_litamin2.cpp)
 target_link_libraries(litamin2_align
+${catkin_LIBRARIES}
+${CERES_LIBRARIES}
+${PCL_LIBRARIES}
+litamin
+)
+
+
+add_executable(litamin2point2voxel_align test/test_align_with_litamin2point2voxel.cpp)
+target_link_libraries(litamin2point2voxel_align
 ${catkin_LIBRARIES}
 ${CERES_LIBRARIES}
 ${PCL_LIBRARIES}

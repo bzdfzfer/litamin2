@@ -1,5 +1,5 @@
-#ifndef LITAMIN_IMPL_HPP
-#define LITAMIN_IMPL_HPP 
+#ifndef LITAMIN2POINT2VOXEL_IMPL_HPP
+#define LITAMIN2POINT2VOXEL_IMPL_HPP 
 
 #include <atomic>
 #include <Eigen/Core>
@@ -15,7 +15,7 @@
 #include "litamin2/ceres_cost/litamin2_cost.hpp"
 
 #include "fast_gicp/so3/so3.hpp"
-#include "litamin2/litamin2.hpp"
+#include "litamin2/litamin2point2voxel.hpp"
 
 #include "fast_gicp/time_utils.hpp"
 
@@ -26,63 +26,58 @@ namespace litamin {
 
 
 template <typename PointSource, typename PointTarget>
-LiTAMIN2<PointSource, PointTarget>::LiTAMIN2() : FastGICP<PointSource, PointTarget>() {
-  this->reg_name_ = "LiTAMIN2";
+LiTAMIN2Point2Voxel<PointSource, PointTarget>::LiTAMIN2Point2Voxel() : FastGICP<PointSource, PointTarget>() {
+  this->reg_name_ = "LiTAMIN2Point2Voxel";
 
   voxel_resolution_ = 0.5; // default voxel resolution is 3m by 3m by 3m.
   search_method_ = NeighborSearchMethod::DIRECT1;
   voxel_mode_ = VoxelAccumulationMode::ADDITIVE;
   this->setRegularizationMethod(RegularizationMethod::NONE);
-  // this->setInitialLambdaFactor(0);
 }
 
 template <typename PointSource, typename PointTarget>
-LiTAMIN2<PointSource, PointTarget>::~LiTAMIN2() {}
+LiTAMIN2Point2Voxel<PointSource, PointTarget>::~LiTAMIN2Point2Voxel() {}
 
 template <typename PointSource, typename PointTarget>
-void LiTAMIN2<PointSource, PointTarget>::setResolution(double resolution) {
+void LiTAMIN2Point2Voxel<PointSource, PointTarget>::setResolution(double resolution) {
   voxel_resolution_ = resolution;
 }
 
 template <typename PointSource, typename PointTarget>
-void LiTAMIN2<PointSource, PointTarget>::setNeighborSearchMethod(NeighborSearchMethod method) {
+void LiTAMIN2Point2Voxel<PointSource, PointTarget>::setNeighborSearchMethod(NeighborSearchMethod method) {
   search_method_ = method;
 }
 
 template <typename PointSource, typename PointTarget>
-void LiTAMIN2<PointSource, PointTarget>::setVoxelAccumulationMode(VoxelAccumulationMode mode) {
+void LiTAMIN2Point2Voxel<PointSource, PointTarget>::setVoxelAccumulationMode(VoxelAccumulationMode mode) {
   voxel_mode_ = mode;
 }
 
 template <typename PointSource, typename PointTarget>
-void LiTAMIN2<PointSource, PointTarget>::swapSourceAndTarget() {
+void LiTAMIN2Point2Voxel<PointSource, PointTarget>::swapSourceAndTarget() {
   input_.swap(target_);
   source_kdtree_.swap(target_kdtree_);
   source_covs_.swap(target_covs_);
-  source_voxelmap_.swap(target_voxelmap_);
-  // target_voxelmap_.reset();
+  target_voxelmap_.reset();
   voxel_correspondences_.clear();
   voxel_mahalanobis_.clear();
 }
 
 template <typename PointSource, typename PointTarget>
-void LiTAMIN2<PointSource, PointTarget>::setInputTarget(const PointCloudTargetConstPtr& cloud) {
+void LiTAMIN2Point2Voxel<PointSource, PointTarget>::setInputTarget(const PointCloudTargetConstPtr& cloud) {
   // if (target_ == cloud) {
   //   return;
   // }
 
   FastGICP<PointSource, PointTarget>::setInputTarget(cloud);
-  source_voxelmap_.reset();
   target_voxelmap_.reset();
 }
 
 template <typename PointSource, typename PointTarget>
-void LiTAMIN2<PointSource, PointTarget>::computeTransformation(PointCloudSource& output, const Matrix4& guess) {
-  // source_voxelmap_.reset();  
-  // target_voxelmap_.reset();
+void LiTAMIN2Point2Voxel<PointSource, PointTarget>::computeTransformation(PointCloudSource& output, const Matrix4& guess) {
+  target_voxelmap_.reset();
 
   FastGICP<PointSource, PointTarget>::computeTransformation(output, guess);
-
 }
 
 
@@ -96,65 +91,40 @@ void LiTAMIN2<PointSource, PointTarget>::computeTransformation(PointCloudSource&
 
 
 template <typename PointSource, typename PointTarget>
-void LiTAMIN2<PointSource, PointTarget>::update_correspondences(const Eigen::Isometry3d& trans) {
+void LiTAMIN2Point2Voxel<PointSource, PointTarget>::update_correspondences(const Eigen::Isometry3d& trans) {
   assert(source_covs_.size() == input_->size());
   assert(target_covs_.size() == target_->size());
 
   voxel_correspondences_.clear();
   auto offsets = neighbor_offsets(search_method_);
 
-  // compute transformed correspondences.
-  // without OpenMP acceleration.
-  // -------------------------------------------------------------------------------------
-  voxel_correspondences_.reserve( source_voxelmap_->voxel_size() * offsets.size() );
+  // std::cout << "input_ voxel size: " << input_->size() << std::endl;
 
-  for (auto s_iter = source_voxelmap_->voxel_begin(); 
-            s_iter != source_voxelmap_->voxel_end(); s_iter ++) {
-    auto s_voxel = s_iter->second;
-    const Eigen::Vector4d mean_A = s_voxel->mean;
+  std::vector<std::vector<std::pair<int, GaussianVoxel::Ptr>>> corrs(num_threads_);
+  for (auto& c : corrs) {
+    c.reserve((input_->size() * offsets.size()) / num_threads_);
+  }
+
+#pragma omp parallel for num_threads(num_threads_) schedule(guided, 8)
+  for (int i = 0; i < input_->size(); i++) {
+    const Eigen::Vector4d mean_A = input_->at(i).getVector4fMap().template cast<double>();
     Eigen::Vector4d transed_mean_A = trans * mean_A;
     Eigen::Vector3i coord = target_voxelmap_->voxel_coord(transed_mean_A);
 
     for (const auto& offset : offsets) {
-      auto t_voxel = target_voxelmap_->lookup_voxel(coord + offset);
-      if (t_voxel != nullptr) {
-        voxel_correspondences_.push_back(std::make_pair(s_voxel, t_voxel));
+      auto voxel = target_voxelmap_->lookup_voxel(coord + offset);
+      if (voxel != nullptr) {
+        int thread_num = omp_get_thread_num();
+        corrs[thread_num].push_back(std::make_pair(i, voxel));
       }
     }
   }
-  // -------------------------------------------------------------------------------------
 
-  // with OpenMP acceleration.  
-  // -------------------------------------------------------------------------------------
-//   size_t s_voxel_size = source_voxelmap_->voxel_size();
-//   std::vector<std::vector<std::pair<GaussianVoxel::Ptr,GaussianVoxel::Ptr>>> corrs(num_threads_);
-//   for (auto& c : corrs) {
-//     c.reserve((s_voxel_size * offsets.size()) / num_threads_);
-//   }
-//   auto s_iter = source_voxelmap_->voxel_begin();
-// #pragma omp parallel for num_threads(num_threads_) schedule(guided, 8)
-//   for (int i = 0; i < s_voxel_size; i++) {
-//     auto s_voxel = s_iter->second;
-//     s_iter ++;
-//     const Eigen::Vector4d mean_A = s_voxel->mean;
-//     Eigen::Vector4d transed_mean_A = trans * mean_A;
-//     Eigen::Vector3i coord = target_voxelmap_->voxel_coord(transed_mean_A);
+  voxel_correspondences_.reserve(input_->size() * offsets.size() );
 
-//     for (const auto& offset : offsets) {
-//       auto t_voxel = target_voxelmap_->lookup_voxel(coord + offset);
-//       if (t_voxel != nullptr) {
-//         corrs[omp_get_thread_num()].push_back(std::make_pair(s_voxel, t_voxel));
-//       }
-//     }
-//   }
-
-//   voxel_correspondences_.reserve(s_voxel_size * offsets.size());
-//   for (const auto& c : corrs) {
-//     voxel_correspondences_.insert(voxel_correspondences_.end(), c.begin(), c.end());
-//   }
-  // -------------------------------------------------------------------------------------
-
-
+  for (const auto& c : corrs) {
+    voxel_correspondences_.insert(voxel_correspondences_.end(), c.begin(), c.end());
+  }
 
 
   // std::cout << "voxel_correspondences_ size: " << voxel_correspondences_.size() << std::endl;
@@ -166,7 +136,7 @@ void LiTAMIN2<PointSource, PointTarget>::update_correspondences(const Eigen::Iso
 #pragma omp parallel for num_threads(num_threads_) schedule(guided, 8)
   for (int i = 0; i < voxel_correspondences_.size(); i++) {
     const auto& corr = voxel_correspondences_[i];
-    const auto& cov_A = corr.first->cov;
+    const auto& cov_A = source_covs_[corr.first];
     const auto& cov_B = corr.second->cov;
     
     
@@ -187,12 +157,7 @@ void LiTAMIN2<PointSource, PointTarget>::update_correspondences(const Eigen::Iso
 }
 
 template <typename PointSource, typename PointTarget>
-double LiTAMIN2<PointSource, PointTarget>::linearize(const Eigen::Isometry3d& trans, Eigen::Matrix<double, 6, 6>* H, Eigen::Matrix<double, 6, 1>* b) {
-  if (source_voxelmap_ == nullptr) {
-    source_voxelmap_.reset(new GaussianVoxelMap<PointTarget>(voxel_resolution_, voxel_mode_));
-    source_voxelmap_->create_voxelmap(*input_, source_covs_);
-    // std::cout << "source_voxelmap_ size: " << source_voxelmap_->voxel_size() << std::endl;
-  }
+double LiTAMIN2Point2Voxel<PointSource, PointTarget>::linearize(const Eigen::Isometry3d& trans, Eigen::Matrix<double, 6, 6>* H, Eigen::Matrix<double, 6, 1>* b) {
   if (target_voxelmap_ == nullptr) {
     target_voxelmap_.reset(new GaussianVoxelMap<PointTarget>(voxel_resolution_, voxel_mode_));
     target_voxelmap_->create_voxelmap(*target_, target_covs_);
@@ -215,11 +180,10 @@ double LiTAMIN2<PointSource, PointTarget>::linearize(const Eigen::Isometry3d& tr
 #pragma omp parallel for num_threads(num_threads_) reduction(+ : sum_errors) schedule(guided, 8)
   for (int i = 0; i < voxel_correspondences_.size(); i++) {
     const auto& corr = voxel_correspondences_[i];
-    // auto soruce_voxel = corr.first;
-    // auto target_voxel = corr.second;
+    auto target_voxel = corr.second;
 
-    const Eigen::Vector4d mean_A = corr.first->mean;
-    const auto& cov_A = corr.first->cov;
+    const Eigen::Vector4d mean_A = input_->at(corr.first).getVector4fMap().template cast<double>();
+    const auto& cov_A = source_covs_[corr.first];
 
     const Eigen::Vector4d mean_B = corr.second->mean;
     const auto& cov_B = corr.second->cov;
@@ -228,8 +192,8 @@ double LiTAMIN2<PointSource, PointTarget>::linearize(const Eigen::Isometry3d& tr
     const Eigen::Vector4d error = mean_B - transed_mean_A;
 
     // implementation only consider ICP cost.
-    // double w = std::sqrt(target_voxel->num_points);
-    // w = 1;
+    double w = std::sqrt(target_voxel->num_points);
+    w = 1;
     // sum_errors += w * error.transpose() * voxel_mahalanobis_[i] * error;
 
 
@@ -240,7 +204,7 @@ double LiTAMIN2<PointSource, PointTarget>::linearize(const Eigen::Isometry3d& tr
 
     double icp_error = error.transpose() * voxel_mahalanobis_[i] * error;
     w_icp = 1 - icp_error / (icp_error + wICPThreshold);
-    double w = w_icp;
+    w = w_icp;
     sum_errors += w_icp * icp_error;
 
     // construct Covariance shape error.
@@ -282,17 +246,15 @@ double LiTAMIN2<PointSource, PointTarget>::linearize(const Eigen::Isometry3d& tr
 }
 
 template <typename PointSource, typename PointTarget>
-double LiTAMIN2<PointSource, PointTarget>::compute_error(const Eigen::Isometry3d& trans) {
+double LiTAMIN2Point2Voxel<PointSource, PointTarget>::compute_error(const Eigen::Isometry3d& trans) {
   double sum_errors = 0.0;
 #pragma omp parallel for num_threads(num_threads_) reduction(+ : sum_errors)
   for (int i = 0; i < voxel_correspondences_.size(); i++) {
     const auto& corr = voxel_correspondences_[i];
-    // auto target_voxel = corr.second;
+    auto target_voxel = corr.second;
 
-    // const Eigen::Vector4d mean_A = input_->at(corr.first).getVector4fMap().template cast<double>();
-    // const auto& cov_A = source_covs_[corr.first];
-    const Eigen::Vector4d mean_A = corr.first->mean;
-    const auto& cov_A = corr.first->cov;
+    const Eigen::Vector4d mean_A = input_->at(corr.first).getVector4fMap().template cast<double>();
+    const auto& cov_A = source_covs_[corr.first];
 
     const Eigen::Vector4d mean_B = corr.second->mean;
     const auto& cov_B = corr.second->cov;
@@ -329,14 +291,7 @@ double LiTAMIN2<PointSource, PointTarget>::compute_error(const Eigen::Isometry3d
 // 3. 求解
 // 4. 改变trans,输出delta
 template <typename PointSource, typename PointTarget>
-bool LiTAMIN2<PointSource, PointTarget>::solve_ceres(Eigen::Isometry3d& trans, Eigen::Isometry3d& delta) {
-  
-  if (source_voxelmap_ == nullptr) {
-    source_voxelmap_.reset(new GaussianVoxelMap<PointTarget>(voxel_resolution_, voxel_mode_));
-    source_voxelmap_->create_voxelmap(*input_, source_covs_);
-    // std::cout << "source_voxelmap_ size: " << source_voxelmap_->voxel_size() << std::endl;
-  }
-
+bool LiTAMIN2Point2Voxel<PointSource, PointTarget>::solve_ceres(Eigen::Isometry3d& trans, Eigen::Isometry3d& delta) {
   if (target_voxelmap_ == nullptr) {
     target_voxelmap_.reset(new GaussianVoxelMap<PointTarget>(voxel_resolution_, voxel_mode_));
     target_voxelmap_->create_voxelmap(*target_, target_covs_);
@@ -369,12 +324,10 @@ bool LiTAMIN2<PointSource, PointTarget>::solve_ceres(Eigen::Isometry3d& trans, E
   t.toc();
   for (int i = 0; i < voxel_correspondences_.size(); i++) {
     const auto& corr = voxel_correspondences_[i];
-    // auto target_voxel = corr.second;
+    auto target_voxel = corr.second;
 
-    // const Eigen::Vector4d mean_A = input_->at(corr.first).getVector4fMap().template cast<double>();
-    // const Eigen::Matrix4d cov_A = source_covs_[corr.first];
-    const Eigen::Vector4d mean_A = corr.first->mean;
-    const auto& cov_A = corr.first->cov;
+    const Eigen::Vector4d mean_A = input_->at(corr.first).getVector4fMap().template cast<double>();
+    const Eigen::Matrix4d cov_A = source_covs_[corr.first];
 
     const Eigen::Vector4d mean_B = corr.second->mean;
     const Eigen::Matrix4d cov_B = corr.second->cov;

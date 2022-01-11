@@ -1,5 +1,6 @@
 #ifndef TIME_UTILS_XYW_HPP
 #define TIME_UTILS_XYW_HPP
+
 #include <chrono>
 #include <string>
 #include <time.h>
@@ -11,7 +12,7 @@ using namespace std;
  * @param y_m_d 
  * @param h_m_s 
  */
-void getLocalTime(string y_m_d,string h_m_s){
+inline void getLocalTime(string y_m_d,string h_m_s){
     time_t timep;
     time(&timep);
     char ymd[16],hms[16];
@@ -20,6 +21,7 @@ void getLocalTime(string y_m_d,string h_m_s){
     y_m_d = ymd;
     h_m_s = hms;
 }
+
 /**
  * @brief 把UNIX时间戳拆成double，防止精度丢失
  * 
@@ -98,4 +100,6 @@ namespace tic
         std::chrono::time_point<std::chrono::system_clock> start, end, tmp;
     };
 }
+
+
 #endif

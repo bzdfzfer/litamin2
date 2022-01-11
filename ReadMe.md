@@ -24,8 +24,10 @@ rosrun litamin2 litamin2_align ~/litamin_ws/src/litamin2/data/251370668.pcd ~/li
 ```
 
 ## Results.
-Voxel resolution is set to 0.5m.
-![aligned results](data/litamin2_results.png).
+
+![aligned results (voxel to voxel)](data/litamin2_results.png).
+
+
 - [GT] Two scan transformation matrix:
 ```
     0.999941    0.0108432 -0.000635437     0.485657
@@ -33,9 +35,16 @@ Voxel resolution is set to 0.5m.
  0.000571654   0.00588436     0.999983   -0.0131581
            0            0            0            1
 ```
+
+#### Voxel to Voxel matching.
+
+Voxel resolution is set to 0.5m.
+
+
+
 - LM based optimization with zero lambda.
-** speed: repeative run of 100 times, average 33ms.
-** accuracy: 
+* speed: repeative run of 100 times, average 32.7774[msec].
+* accuracy: 
 ``` bash
 align result: 
    0.999867   0.0162508 -0.00157465    0.491412
@@ -44,8 +53,8 @@ align result:
           0           0           0           1
 ```
 - Ceres based solution.
-** speed: repeative run of 100 times, average 132ms.
-** accuracy: 
+* speed: repeative run of 100 times, average 132ms.
+* accuracy: 
 ``` bash
 align result: 
    0.999875   0.0157213 -0.00137114    0.465903
@@ -53,6 +62,41 @@ align result:
  0.00133655  0.00221065    0.999997  -0.0321361
           0           0           0           1
 ```
+
+#### Point to Voxel matching.
+
+Voxel resolution is set to 3m.
+
+
+
+- LM optimization.
+* speed: 100 times run average time: 38.8906[msec]
+* accuracy:
+``` bash
+align result: 
+   0.999903   0.0138753 -0.00154203    0.489225
+ -0.0138811    0.999896 -0.00385291    0.116165
+ 0.00148841  0.00387394    0.999991  -0.0299192
+          0           0           0           1
+```
+
+- Ceres:
+* speed: 100 times run average time: 461.8[msec]
+* accuracy: 
+``` bash
+align result: 
+   0.999902   0.0138793  0.00193534    0.455404
+ -0.0138774    0.999903 -0.00103081    0.110234
+-0.00194946  0.00100385    0.999998  -0.0399503
+          0           0           0           1
+```
+
+#### Alignment quality Comparison: 
+Zoom in details. 
+<center class="half"> 
+	<img src="data/litamin2_voxel2voxel.png" alt="drawing" width="500"/>
+	<img src="data/litamin2_point2voxel.png" alt="drawing" width="500"/>
+</center>
 
 ## References.
 * Yokozuka M, Koide K, Oishi S, et al. LiTAMIN2: Ultra Light LiDAR-based SLAM using Geometric Approximation applied with KL-Divergence, ICRA2021. [litamin2 paper link](https://arxiv.org/abs/2103.00784).
