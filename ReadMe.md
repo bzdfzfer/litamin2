@@ -27,6 +27,14 @@ rosrun litamin2 litamin2_align ~/litamin_ws/src/litamin2/data/251370668.pcd ~/li
 
 ![aligned results (voxel to voxel)](data/litamin2_results.png).
 
+White --> Source cloud.
+
+Green --> Target cloud.
+
+Blue  --> LM optimization alignment.
+
+Red --> Ceres optimization alignment.
+
 
 - [GT] Two scan transformation matrix:
 ```
@@ -94,8 +102,8 @@ align result:
 #### Alignment quality Comparison: 
 Zoom in details. 
 <center class="half"> 
-	<img src="data/litamin2_voxel2voxel.png" alt="drawing" width="500"/>
-	<img src="data/litamin2_point2voxel.png" alt="drawing" width="500"/>
+	<img src="data/litamin2_voxel2voxel.png" alt="drawing" width="450"/>
+	<img src="data/litamin2_point2voxel.png" alt="drawing" width="450"/>
 </center>
 
 ## References.

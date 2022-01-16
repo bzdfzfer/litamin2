@@ -1,5 +1,6 @@
-#ifndef LITAMIN2POINT2VOXEL_IMPL_HPP
-#define LITAMIN2POINT2VOXEL_IMPL_HPP 
+#ifndef LITAMIN2NEWTON_IMPL_HPP
+#define LITAMIN2NEWTON_IMPL_HPP
+
 
 #include <atomic>
 #include <Eigen/Core>
@@ -15,46 +16,47 @@
 #include "litamin2/ceres_cost/litamin2_cost.hpp"
 
 #include "fast_gicp/so3/so3.hpp"
-#include "litamin2/litamin2point2voxel.hpp"
+#include "litamin2/litamin2point2voxelnewton.hpp"
 
+#include "fast_gicp/gicp/impl/fast_gicp_impl.hpp"
 #include "fast_gicp/time_utils.hpp"
-
 
 using namespace fast_gicp;
 
-namespace litamin {
-
+namespace litamin{
 
 template <typename PointSource, typename PointTarget>
-LiTAMIN2Point2Voxel<PointSource, PointTarget>::LiTAMIN2Point2Voxel() : FastGICP<PointSource, PointTarget>() {
-  this->reg_name_ = "LiTAMIN2Point2Voxel";
+LiTAMIN2Point2VoxelNewton<PointSource, PointTarget>::LiTAMIN2Point2VoxelNewton() : FastGICP<PointSource, PointTarget>() {
+  this->reg_name_ = "LiTAMIN2Point2VoxelNewton";
 
-  voxel_resolution_ = 0.5; // default voxel resolution is 3m by 3m by 3m.
+  voxel_resolution_ = 3.0; // default voxel resolution is 3m by 3m by 3m.
   search_method_ = NeighborSearchMethod::DIRECT1;
   voxel_mode_ = VoxelAccumulationMode::ADDITIVE;
   this->setRegularizationMethod(RegularizationMethod::NONE);
+  useCovarianceCost_ = false;
 }
 
 template <typename PointSource, typename PointTarget>
-LiTAMIN2Point2Voxel<PointSource, PointTarget>::~LiTAMIN2Point2Voxel() {}
+LiTAMIN2Point2VoxelNewton<PointSource, PointTarget>::~LiTAMIN2Point2VoxelNewton() {}
 
 template <typename PointSource, typename PointTarget>
-void LiTAMIN2Point2Voxel<PointSource, PointTarget>::setResolution(double resolution) {
+void LiTAMIN2Point2VoxelNewton<PointSource, PointTarget>::setResolution(double resolution) {
   voxel_resolution_ = resolution;
 }
 
 template <typename PointSource, typename PointTarget>
-void LiTAMIN2Point2Voxel<PointSource, PointTarget>::setNeighborSearchMethod(NeighborSearchMethod method) {
+void LiTAMIN2Point2VoxelNewton<PointSource, PointTarget>::setNeighborSearchMethod(NeighborSearchMethod method) {
   search_method_ = method;
 }
 
 template <typename PointSource, typename PointTarget>
-void LiTAMIN2Point2Voxel<PointSource, PointTarget>::setVoxelAccumulationMode(VoxelAccumulationMode mode) {
+void LiTAMIN2Point2VoxelNewton<PointSource, PointTarget>::setVoxelAccumulationMode(VoxelAccumulationMode mode) {
   voxel_mode_ = mode;
 }
 
+
 template <typename PointSource, typename PointTarget>
-void LiTAMIN2Point2Voxel<PointSource, PointTarget>::swapSourceAndTarget() {
+void LiTAMIN2Point2VoxelNewton<PointSource, PointTarget>::swapSourceAndTarget() {
   input_.swap(target_);
   source_kdtree_.swap(target_kdtree_);
   source_covs_.swap(target_covs_);
@@ -64,7 +66,7 @@ void LiTAMIN2Point2Voxel<PointSource, PointTarget>::swapSourceAndTarget() {
 }
 
 template <typename PointSource, typename PointTarget>
-void LiTAMIN2Point2Voxel<PointSource, PointTarget>::setInputTarget(const PointCloudTargetConstPtr& cloud) {
+void LiTAMIN2Point2VoxelNewton<PointSource, PointTarget>::setInputTarget(const PointCloudTargetConstPtr& cloud) {
   // if (target_ == cloud) {
   //   return;
   // }
@@ -74,13 +76,11 @@ void LiTAMIN2Point2Voxel<PointSource, PointTarget>::setInputTarget(const PointCl
 }
 
 template <typename PointSource, typename PointTarget>
-void LiTAMIN2Point2Voxel<PointSource, PointTarget>::computeTransformation(PointCloudSource& output, const Matrix4& guess) {
+void LiTAMIN2Point2VoxelNewton<PointSource, PointTarget>::computeTransformation(PointCloudSource& output, const Matrix4& guess) {
   target_voxelmap_.reset();
 
   FastGICP<PointSource, PointTarget>::computeTransformation(output, guess);
 }
-
-
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -91,7 +91,7 @@ void LiTAMIN2Point2Voxel<PointSource, PointTarget>::computeTransformation(PointC
 
 
 template <typename PointSource, typename PointTarget>
-void LiTAMIN2Point2Voxel<PointSource, PointTarget>::update_correspondences(const Eigen::Isometry3d& trans) {
+void LiTAMIN2Point2VoxelNewton<PointSource, PointTarget>::update_correspondences(const Eigen::Isometry3d& trans) {
   assert(source_covs_.size() == input_->size());
   assert(target_covs_.size() == target_->size());
 
@@ -157,7 +157,9 @@ void LiTAMIN2Point2Voxel<PointSource, PointTarget>::update_correspondences(const
 }
 
 template <typename PointSource, typename PointTarget>
-double LiTAMIN2Point2Voxel<PointSource, PointTarget>::linearize(const Eigen::Isometry3d& trans, Eigen::Matrix<double, 6, 6>* H, Eigen::Matrix<double, 6, 1>* b) {
+double LiTAMIN2Point2VoxelNewton<PointSource, PointTarget>::linearize(const Eigen::Isometry3d& trans, 
+							Eigen::Matrix<double, 6, 6>* H, 
+							Eigen::Matrix<double, 6, 1>* b) {
   if (target_voxelmap_ == nullptr) {
     target_voxelmap_.reset(new GaussianVoxelMap<PointTarget>(voxel_resolution_, voxel_mode_));
     target_voxelmap_->create_voxelmap(*target_, target_covs_);
@@ -193,7 +195,7 @@ double LiTAMIN2Point2Voxel<PointSource, PointTarget>::linearize(const Eigen::Iso
 
     // implementation only consider ICP cost.
     double w = std::sqrt(target_voxel->num_points);
-    w = 1;
+    // w = 1;
     // sum_errors += w * error.transpose() * voxel_mahalanobis_[i] * error;
 
 
@@ -247,9 +249,32 @@ double LiTAMIN2Point2Voxel<PointSource, PointTarget>::linearize(const Eigen::Iso
     Eigen::Matrix<double, 6, 6> Hi = w * jlossexp.transpose() * voxel_mahalanobis_[i] * jlossexp;
     Eigen::Matrix<double, 6, 1> bi = w * jlossexp.transpose() * voxel_mahalanobis_[i] * error;
 
+    // add the second part to Hs.
+    Eigen::Matrix<double, 6, 6> Hi2;
+    Hi2.setZero();
+    Eigen::Matrix<double, 4, 6> tmp_Je1, tmp_Je2, tmp_Je3;
+    tmp_Je1.setZero();
+    tmp_Je2.setZero();
+    tmp_Je3.setZero();
+    
+    tmp_Je1.block<1,6>(1,0) = - jlossexp.block<1,6>(2,0);
+    tmp_Je1.block<1,6>(2,0) = jlossexp.block<1,6>(1,0);
+
+    tmp_Je2.block<1,6>(0,0) = jlossexp.block<1,6>(2,0);
+    tmp_Je2.block<1,6>(2,0) = -jlossexp.block<1,6>(0,0);
+
+    tmp_Je3.block<1,6>(0,0) = -jlossexp.block<1,6>(1,0);
+    tmp_Je3.block<1,6>(1,0) = jlossexp.block<1,6>(0,0);
+
+    Hi2.block<1,6>(0,0) = w * error.transpose() * voxel_mahalanobis_[i] * tmp_Je1;
+    Hi2.block<1,6>(1,0) = w * error.transpose() * voxel_mahalanobis_[i] * tmp_Je2;
+    Hi2.block<1,6>(2,0) = w * error.transpose() * voxel_mahalanobis_[i] * tmp_Je3;
+
     int thread_num = omp_get_thread_num();
     Hs[thread_num] += Hi;
     bs[thread_num] += bi;
+    Hs[thread_num] += Hi2;
+
   }
 
   if (H && b) {
@@ -264,152 +289,17 @@ double LiTAMIN2Point2Voxel<PointSource, PointTarget>::linearize(const Eigen::Iso
   return sum_errors;
 }
 
+
 template <typename PointSource, typename PointTarget>
-double LiTAMIN2Point2Voxel<PointSource, PointTarget>::compute_error(const Eigen::Isometry3d& trans) {
-  double sum_errors = 0.0;
-#pragma omp parallel for num_threads(num_threads_) reduction(+ : sum_errors)
-  for (int i = 0; i < voxel_correspondences_.size(); i++) {
-    const auto& corr = voxel_correspondences_[i];
-    auto target_voxel = corr.second;
-
-    const Eigen::Vector4d mean_A = input_->at(corr.first).getVector4fMap().template cast<double>();
-    const auto& cov_A = source_covs_[corr.first];
-
-    const Eigen::Vector4d mean_B = corr.second->mean;
-    const auto& cov_B = corr.second->cov;
-
-    const Eigen::Vector4d transed_mean_A = trans * mean_A;
-    const Eigen::Vector4d error = mean_B - transed_mean_A;
-
-    // double w = std::sqrt(target_voxel->num_points);
-    // w = 1;
-    // sum_errors += w * error.transpose() * voxel_mahalanobis_[i] * error;
-
-    // new implementation considering ICP cost and covariance cost.    
-    const double sigmaICP = 0.5;
-    const double sigmaCov = 3;
-    double w_icp, w_cov;
-
-    double icp_error = error.transpose() * voxel_mahalanobis_[i] * error;
-    w_icp = 1 - icp_error / (icp_error + sigmaICP*sigmaICP);
-    sum_errors += w_icp * icp_error;    
-
-    Eigen::Matrix3d cA = cov_A.template block<3, 3>(0, 0);
-    Eigen::Matrix3d cB = cov_B.template block<3, 3>(0, 0);
-    Eigen::Matrix3d cAT, cBT, cAi, cBi, cAiT, cBiT;
-    cAT = cA.transpose();
-    cBT = cB.transpose();
-    cAi = cA.inverse();
-    cBi = cB.inverse();
-    cAiT = cAi.transpose();
-    cBiT = cBi.transpose();
-
-    Eigen::Matrix3d cR = trans.rotation();    
-    Eigen::Matrix3d cRT = cR.transpose();
-
-    Eigen::Matrix3d CbRCaiRT = cR * cAi * cRT * cB;
-    Eigen::Matrix3d CbiRCaRT = cBi * cR * cA * cRT;
-    double cov_error = CbRCaiRT.trace() + CbiRCaRT.trace() - 6;
-    w_cov = 1 - cov_error / (cov_error + sigmaCov*sigmaCov);
-    sum_errors += w_cov * cov_error;
-
-    // Eigen::Matrix4d CbRCaiRT = cov_B * trans.matrix() * cov_A.inverse() * trans.matrix().transpose();
-    // Eigen::Matrix4d CbiRCaRT = cov_B.inverse() * trans.matrix() * cov_A * trans.matrix().transpose();
-    // double cov_error = CbRCaiRT.block<3,3>(0,0).trace() + CbiRCaRT.block<3,3>(0,0).trace() - 6;
-    // w_cov = 1 - cov_error / (cov_error + sigmaCov);
-    // sum_errors += w_cov * cov_error;
-
-  }
-
-  return sum_errors;
+double LiTAMIN2Point2VoxelNewton<PointSource, PointTarget>::compute_error(const Eigen::Isometry3d& trans) {
+	return linearize(trans);
 }
 
-// 1. 更新对应关系
-// 2. 构建优化方程
-// 3. 求解
-// 4. 改变trans,输出delta
+	
 template <typename PointSource, typename PointTarget>
-bool LiTAMIN2Point2Voxel<PointSource, PointTarget>::solve_ceres(Eigen::Isometry3d& trans, Eigen::Isometry3d& delta) {
-  if (target_voxelmap_ == nullptr) {
-    target_voxelmap_.reset(new GaussianVoxelMap<PointTarget>(voxel_resolution_, voxel_mode_));
-    target_voxelmap_->create_voxelmap(*target_, target_covs_);
-    // std::cout << "target_voxelmap_ size: " << target_voxelmap_->voxel_size() << std::endl;    
-  }  
-  tic::TicToc t;
-  update_correspondences(trans);
-  // std::cout << "update correspondences time: " << t.toc() << " ms. " << std::endl;
-  Eigen::Isometry3d origin = trans;
-  Eigen::Quaterniond q_guess(origin.linear());
-  Eigen::Vector3d t_guess(origin.translation());
-  // Eigen四元数构造是wxyz，存储是xyzw，本库全部采用eigen表达方法
-  double para[7] = {q_guess.x(), q_guess.y(), q_guess.z(), q_guess.w(),t_guess[0], t_guess[1], t_guess[2]};
-  double* para_q;
-  double* para_t;
-  para_q = &para[0];
-  para_t = &para[4];
-  ceres::LossFunction* loss_function = new ceres::HuberLoss(1.0);
-  ceres::LocalParameterization* q_parameterization = new ceres::EigenQuaternionParameterization();
-  ceres::Problem::Options problem_options;
-  ceres::Problem problem(problem_options);
-
-  problem.AddParameterBlock(para_q, 4, q_parameterization);
-  problem.AddParameterBlock(para_t, 3);
-
-
-  // q_last是优化向量的映射
-  Eigen::Map<Eigen::Quaterniond> q_last(para_q);
-  Eigen::Map<Eigen::Vector3d> t_last(para_t);
-  t.toc();
-  for (int i = 0; i < voxel_correspondences_.size(); i++) {
-    const auto& corr = voxel_correspondences_[i];
-    auto target_voxel = corr.second;
-
-    const Eigen::Vector4d mean_A = input_->at(corr.first).getVector4fMap().template cast<double>();
-    const Eigen::Matrix4d cov_A = source_covs_[corr.first];
-
-    const Eigen::Vector4d mean_B = corr.second->mean;
-    const Eigen::Matrix4d cov_B = corr.second->cov;
-
-    const Eigen::Vector3d p_mean = mean_A.block<3,1>(0,0);
-    const auto& p_cov = cov_A.block<3,3>(0,0);
-    const Eigen::Vector3d q_mean = mean_B.block<3,1>(0,0);
-    const auto& q_cov = cov_B.block<3,3>(0,0);
-
-    // const Eigen::Vector3d p_mean = input_->at(i).getVector3fMap().template cast<double>();
-    // const auto& p_cov = source_covs_[i].block<3, 3>(0, 0);
-
-    // const Eigen::Vector3d q_mean = target_->at(target_index).getVector3fMap().template cast<double>();
-    // const auto& q_cov = target_covs_[target_index].block<3, 3>(0, 0);
-
-    Eigen::Matrix3d lambdaI = 1e-6*Eigen::Matrix3d::Identity();
-    double sigmaICP = 0.5;
-    ceres::CostFunction* cost_function = LiTAMIN2CostFunction::Create(p_mean, q_mean, p_cov, q_cov, lambdaI, sigmaICP);
-    problem.AddResidualBlock(cost_function, loss_function, para_q, para_t);
-
-
-  }
-  // cout << "ceres add residual block time: " << t.toc() << " ms. " << std::endl;
-  // 开始求解ceres问题
-  ceres::Solver::Options options;
-  options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
-  // options.dogleg_type = ceres::TRADITIONAL_DOGLEG;
-  options.linear_solver_type = ceres::DENSE_QR;
-  options.max_num_iterations = 10;
-  options.function_tolerance = 1e-3;
-  options.gradient_tolerance = 1e-6;
-  options.minimizer_progress_to_stdout = false;
-  options.num_threads = num_threads_;
-  ceres::Solver::Summary summary;
-  ceres::Solve(options, &problem, &summary);  // 求解完毕后，q_last和t_last代表了target->source
-  // cout << "solve time: " << t.toc()  << " ms. "  << endl;
-  trans.linear() = q_last.matrix();
-  trans.translation() = t_last;
-  delta = origin.inverse() * trans;
-  // cout << "result: " << trans.matrix() << endl;
-  return summary.IsSolutionUsable();
+bool LiTAMIN2Point2VoxelNewton<PointSource, PointTarget>::solve_ceres(Eigen::Isometry3d& trans,Eigen::Isometry3d& delta) {
+	return true;
 }
 
-
-}
-
+} // end of namespace litamin.
 #endif

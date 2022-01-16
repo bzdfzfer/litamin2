@@ -36,6 +36,7 @@ struct LiTAMIN2CostFunction
         T wICP = T(1.)-EICP/(EICP+sigma_square);
         residuals[0] = wICP*EICP;
 
+
         // T sigma_cov_square = T(3.0*3.0);
         // Eigen::Matrix<T,3,3> R = quat.toRotationMatrix();
         // Eigen::Matrix<T,3,3> RT = R.transpose();

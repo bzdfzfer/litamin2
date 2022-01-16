@@ -39,6 +39,7 @@ add_library(litamin SHARED
 	src/litamin2/litamin2.cpp
 	src/fast_gicp/gicp/lsq_registration.cpp
 	src/litamin2/litamin2point2voxel.cpp
+	src/litamin2/litamin2point2voxelnewton.cpp
 )
 target_link_libraries(litamin
 	${PCL_LIBRARIES}
@@ -66,6 +67,14 @@ litamin
 
 add_executable(litamin2point2voxel_align test/test_align_with_litamin2point2voxel.cpp)
 target_link_libraries(litamin2point2voxel_align
+${catkin_LIBRARIES}
+${CERES_LIBRARIES}
+${PCL_LIBRARIES}
+litamin
+)
+
+add_executable(litamin2newton_align test/test_align_with_litamin2point2voxelnewton.cpp)
+target_link_libraries(litamin2newton_align
 ${catkin_LIBRARIES}
 ${CERES_LIBRARIES}
 ${PCL_LIBRARIES}
