@@ -264,9 +264,33 @@ double LiTAMIN2<PointSource, PointTarget>::linearize(const Eigen::Isometry3d& tr
     Eigen::Matrix<double, 6, 6> Hi = w * jlossexp.transpose() * voxel_mahalanobis_[i] * jlossexp;
     Eigen::Matrix<double, 6, 1> bi = w * jlossexp.transpose() * voxel_mahalanobis_[i] * error;
 
+    // add the second part to Hs.
+    Eigen::Matrix<double, 6, 6> Hi2;
+    Hi2.setZero();
+    Eigen::Matrix<double, 4, 6> tmp_Je1, tmp_Je2, tmp_Je3;
+    tmp_Je1.setZero();
+    tmp_Je2.setZero();
+    tmp_Je3.setZero();
+    
+    tmp_Je1.block<1,6>(1,0) = - jlossexp.block<1,6>(2,0);
+    tmp_Je1.block<1,6>(2,0) = jlossexp.block<1,6>(1,0);
+
+    tmp_Je2.block<1,6>(0,0) = jlossexp.block<1,6>(2,0);
+    tmp_Je2.block<1,6>(2,0) = -jlossexp.block<1,6>(0,0);
+
+    tmp_Je3.block<1,6>(0,0) = -jlossexp.block<1,6>(1,0);
+    tmp_Je3.block<1,6>(1,0) = jlossexp.block<1,6>(0,0);
+
+    Hi2.block<1,6>(0,0) = w * error.transpose() * voxel_mahalanobis_[i] * tmp_Je1;
+    Hi2.block<1,6>(1,0) = w * error.transpose() * voxel_mahalanobis_[i] * tmp_Je2;
+    Hi2.block<1,6>(2,0) = w * error.transpose() * voxel_mahalanobis_[i] * tmp_Je3;
+
+
     int thread_num = omp_get_thread_num();
     Hs[thread_num] += Hi;
     bs[thread_num] += bi;
+    Hs[thread_num] += Hi2;
+
   }
 
   if (H && b) {
