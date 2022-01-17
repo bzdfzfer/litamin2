@@ -34,6 +34,7 @@ LiTAMIN2<PointSource, PointTarget>::LiTAMIN2() : FastGICP<PointSource, PointTarg
   voxel_mode_ = VoxelAccumulationMode::ADDITIVE;
   this->setRegularizationMethod(RegularizationMethod::NONE);
   // this->setInitialLambdaFactor(0);
+  this->setLSQType(LSQ_OPTIMIZER_TYPE::GaussNewton);
 }
 
 template <typename PointSource, typename PointTarget>

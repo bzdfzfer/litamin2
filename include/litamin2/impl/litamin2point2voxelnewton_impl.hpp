@@ -34,6 +34,8 @@ LiTAMIN2Point2VoxelNewton<PointSource, PointTarget>::LiTAMIN2Point2VoxelNewton()
   voxel_mode_ = VoxelAccumulationMode::ADDITIVE;
   this->setRegularizationMethod(RegularizationMethod::NONE);
   useCovarianceCost_ = false;
+  this->setLSQType(LSQ_OPTIMIZER_TYPE::GaussNewton);
+  
 }
 
 template <typename PointSource, typename PointTarget>
