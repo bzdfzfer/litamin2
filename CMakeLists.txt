@@ -3,7 +3,7 @@ project(litamin2)
 
 set(CMAKE_BUILD_TYPE "Release")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -pthread") 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 find_package(PCL REQUIRED)
 
@@ -34,6 +34,12 @@ if(catkin_FOUND)
     LIBRARIES litamin
   )
 endif()
+
+include_directories(
+	include
+	${PCL_INCLUDE_DIRS}
+	${EIGEN3_INCLUDE_DIR}
+)
 
 add_library(litamin SHARED
 	src/litamin2/litamin2.cpp
@@ -79,4 +85,12 @@ ${catkin_LIBRARIES}
 ${CERES_LIBRARIES}
 ${PCL_LIBRARIES}
 litamin
+)
+
+add_executable(test_dataloader test/test_dataloader.cpp
+	src/dataloader/dataset.cpp
+	)
+target_link_libraries(test_dataloader 
+${catkin_LIBRARIES}
+${PCL_LIBRARIES}
 )
