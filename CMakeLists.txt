@@ -89,8 +89,20 @@ litamin
 
 add_executable(test_dataloader test/test_dataloader.cpp
 	src/dataloader/dataset.cpp
+	src/Visualizer.cpp
 	)
 target_link_libraries(test_dataloader 
 ${catkin_LIBRARIES}
 ${PCL_LIBRARIES}
+)
+
+add_executable(test_kitti_align test/test_kitti_align.cpp
+	src/dataloader/dataset.cpp
+	src/Visualizer.cpp
+	)
+target_link_libraries(test_kitti_align 
+${catkin_LIBRARIES}
+${CERES_LIBRARIES}
+${PCL_LIBRARIES}
+litamin
 )

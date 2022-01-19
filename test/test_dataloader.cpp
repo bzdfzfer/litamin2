@@ -3,13 +3,14 @@
 
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
-#include <pcl/visualization/pcl_visualizer.h>
-#include <pcl/visualization/point_cloud_color_handlers.h>
 
 #include "dataloader/dataset.hpp"
+#include "Visualizer.h"
 
 using namespace litamin;
 using namespace std;
+
+PlaneNormalVisualizer vis;
 
 int main(int argc, char** argv) {
   if (argc < 3) {
@@ -29,10 +30,12 @@ int main(int argc, char** argv) {
   // loading dataset sequence id.
 
 
+  boost::thread vis_thread(boost::bind(&PlaneNormalVisualizer::Spin, &vis));
+
   auto sequences = get_sequences(dataset_options);
   int num_sequences = (int) sequences.size();
   cout << "sequences num: " << num_sequences << endl;
-  pcl::visualization::PCLVisualizer vis;
+
 
 
   for(int i=0; i < num_sequences; i++) {
@@ -42,21 +45,17 @@ int main(int argc, char** argv) {
 	iterator_ptr->SetInitFrame(0);
 	iterator_ptr->printDatasetType(dataset_options);
     int frame_id = 0;
-    while(iterator_ptr->HasNext() && !vis.wasStopped()) {
+    while(iterator_ptr->HasNext() && vis.init) {
     	pcl::PointCloud<pcl::PointXYZ> frame = iterator_ptr->Next();
-    	cout << "frame pts num: " << frame.size() << endl;
+    	// cout << "frame pts num: " << frame.size() << endl;
 
-    	// clear first.
-    	vis.removeShape("raw_cloud");
+    	vis.UpdateCloud(frame.makeShared());
 
-		vis.addPointCloud<pcl::PointXYZ>(frame.makeShared(), 
-			pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>(frame.makeShared(), 
-											255.0, 255.0, 255.0), 
-			"raw_cloud");
-		 vis.spinOnce (100);
-		 // std::this_thread::sleep_for(100ms);
+		 std::this_thread::sleep_for(10ms);
     }
   }
+
+  vis_thread.join();
 
   return 0;
 

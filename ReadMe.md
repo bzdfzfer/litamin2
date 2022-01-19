@@ -115,3 +115,23 @@ Zoom in details.
 ## TODO.
 * Current implementation only uses ICP cost, the covariance rotation cost function is not successfully added. (due to instable convex optimization of trace terms. )
 * Find Hessian matrix of E_{ICP} and E_{COV} and implement Newton method mentioned in the paper.
+
+The Hessian of ICP cost is added in current implenentation, but the contribution on accuracy improvement is negligible. This proves that jacobian approximatin is good enough for hessian computation.
+
+**Someone interested in the derivation process of Hessian matrix and Jacobian matrix, please refer to "litamin2_derivatives.pdf".**
+
+**If someone knows how to compute the derivative of trace with respect to lie so(3), please teach my in the issue.**
+
+## KITTI dataset.
+The KITTI odometry dataset is used to run this algorithm, part of seq 00 is shown below.
+![Odometry Sequence 00](data/kitti00.png)
+
+To run this test, one can use odometry dataset:
+```bash
+rosrun litamin2 test_kitti_align path_to_your_kitti_odometry_dataset KITTI output_path
+```
+Or run with raw dataset:
+```bash
+rosrun litamin2 test_kitti_align path_to_your_kitti_raw_dataset KITTI_raw output_path
+
+```
