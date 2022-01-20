@@ -120,7 +120,9 @@ The Hessian of ICP cost is added in current implenentation, but the contribution
 
 **Someone interested in the derivation process of Hessian matrix and Jacobian matrix, please refer to "litamin2_derivatives.pdf".**
 
-**If someone knows how to compute the derivative of trace with respect to lie so(3), please teach my in the issue.**
+~~**If someone knows how to compute the derivative of trace with respect to lie so(3), please teach my in the issue.**~~
+
+**I have derived the jacobian and hessian part of COVARIANCE cost part.**
 
 ## KITTI dataset.
 The KITTI odometry dataset is used to run this algorithm, part of seq 00 is shown below.
