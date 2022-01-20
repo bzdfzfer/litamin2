@@ -133,7 +133,9 @@ Zoom in details.
 
 ~~**If someone knows how to compute the derivative of trace with respect to lie so(3), please teach my in the issue.**~~
 
-**I have derived the jacobian and hessian part of COVARIANCE cost part.**
+**I have derived the jacobian and hessian matrix of COVARIANCE cost part in "[litamin2_derivatives.pdf](litamin2_derivatives.pdf)".**
+**The implementation of this part is coded at "[litamin2point2voxelnewton_impl.hpp](include/litamin2/impl/litamin2point2voxelnewton_impl.hpp)".**
+
 
 ## KITTI dataset.
 The KITTI odometry dataset is used to run this algorithm, part of seq 00 is shown below.
