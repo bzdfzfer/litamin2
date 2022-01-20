@@ -389,7 +389,7 @@ void PlaneNormalVisualizer::Spin() {
     // position x,y,z         view x,y,z      view up: x,y,z
     viewer->setCameraPosition(-32.1585, 38.041, 40.6718,    0, 0, 0,   0.321541, -0.551288, 0.769866);
     viewer->setCameraFieldOfView(1);
-    viewer->setCameraClipDistances( 0.244114, 244.114 ); // clipping plane: 43.5101, 400.783     
+    viewer->setCameraClipDistances( 0.244114, 244.114 );
 
   //   init = true;
   }

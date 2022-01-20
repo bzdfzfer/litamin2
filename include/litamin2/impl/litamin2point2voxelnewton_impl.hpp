@@ -17,6 +17,7 @@
 
 #include "fast_gicp/so3/so3.hpp"
 #include "litamin2/litamin2point2voxelnewton.hpp"
+#include "litamin2/impl/tensor_product.h"
 
 #include "fast_gicp/gicp/impl/fast_gicp_impl.hpp"
 #include "fast_gicp/time_utils.hpp"
@@ -36,6 +37,7 @@ LiTAMIN2Point2VoxelNewton<PointSource, PointTarget>::LiTAMIN2Point2VoxelNewton()
   useCovarianceCost_ = false;
   this->setLSQType(LSQ_OPTIMIZER_TYPE::GaussNewton);
   
+  K33_ = getCommutationMatrix33();
 }
 
 template <typename PointSource, typename PointTarget>
@@ -211,6 +213,7 @@ double LiTAMIN2Point2VoxelNewton<PointSource, PointTarget>::linearize(const Eige
     w = w_icp;
     sum_errors += w_icp * icp_error;
 
+    // A for p, B for q.
     Eigen::Matrix3d cA = cov_A.template block<3, 3>(0, 0);
     Eigen::Matrix3d cB = cov_B.template block<3, 3>(0, 0);
     Eigen::Matrix3d cAT, cBT, cAi, cBi, cAiT, cBiT;
@@ -247,36 +250,98 @@ double LiTAMIN2Point2VoxelNewton<PointSource, PointTarget>::linearize(const Eige
     dtdx0.block<3, 3>(0, 3) = -Eigen::Matrix3d::Identity();
 
     Eigen::Matrix<double, 4, 6> jlossexp = dtdx0;
-
+    w = w_icp;
     Eigen::Matrix<double, 6, 6> Hi = w * jlossexp.transpose() * voxel_mahalanobis_[i] * jlossexp;
     Eigen::Matrix<double, 6, 1> bi = w * jlossexp.transpose() * voxel_mahalanobis_[i] * error;
 
     // add the second part to Hs.
-    Eigen::Matrix<double, 6, 6> Hi2;
-    Hi2.setZero();
-    Eigen::Matrix<double, 4, 6> tmp_Je1, tmp_Je2, tmp_Je3;
-    tmp_Je1.setZero();
-    tmp_Je2.setZero();
-    tmp_Je3.setZero();
+    // Eigen::Matrix<double, 6, 6> Hi2;
+    // Hi2.setZero();
+    // Eigen::Matrix<double, 4, 6> tmp_Je1, tmp_Je2, tmp_Je3;
+    // tmp_Je1.setZero();
+    // tmp_Je2.setZero();
+    // tmp_Je3.setZero();
     
-    tmp_Je1.block<1,6>(1,0) = - jlossexp.block<1,6>(2,0);
-    tmp_Je1.block<1,6>(2,0) = jlossexp.block<1,6>(1,0);
+    // tmp_Je1.block<1,6>(1,0) = - jlossexp.block<1,6>(2,0);
+    // tmp_Je1.block<1,6>(2,0) = jlossexp.block<1,6>(1,0);
 
-    tmp_Je2.block<1,6>(0,0) = jlossexp.block<1,6>(2,0);
-    tmp_Je2.block<1,6>(2,0) = -jlossexp.block<1,6>(0,0);
+    // tmp_Je2.block<1,6>(0,0) = jlossexp.block<1,6>(2,0);
+    // tmp_Je2.block<1,6>(2,0) = -jlossexp.block<1,6>(0,0);
 
-    tmp_Je3.block<1,6>(0,0) = -jlossexp.block<1,6>(1,0);
-    tmp_Je3.block<1,6>(1,0) = jlossexp.block<1,6>(0,0);
+    // tmp_Je3.block<1,6>(0,0) = -jlossexp.block<1,6>(1,0);
+    // tmp_Je3.block<1,6>(1,0) = jlossexp.block<1,6>(0,0);
 
-    Hi2.block<1,6>(0,0) = w * error.transpose() * voxel_mahalanobis_[i] * tmp_Je1;
-    Hi2.block<1,6>(1,0) = w * error.transpose() * voxel_mahalanobis_[i] * tmp_Je2;
-    Hi2.block<1,6>(2,0) = w * error.transpose() * voxel_mahalanobis_[i] * tmp_Je3;
+    // Hi2.block<1,6>(0,0) = w * error.transpose() * voxel_mahalanobis_[i] * tmp_Je1;
+    // Hi2.block<1,6>(1,0) = w * error.transpose() * voxel_mahalanobis_[i] * tmp_Je2;
+    // Hi2.block<1,6>(2,0) = w * error.transpose() * voxel_mahalanobis_[i] * tmp_Je3;
+
 
     int thread_num = omp_get_thread_num();
     Hs[thread_num] += Hi;
     bs[thread_num] += bi;
-    Hs[thread_num] += Hi2;
+    // Hs[thread_num] += Hi2;
 
+    // A is p, B is q.
+    // compute jacobian of Covariance cost function.
+    Eigen::Matrix3d G1, G2, G3;
+    Eigen::Matrix3d G1R, G2R, G3R;
+    Eigen::Matrix<double, 9,3> J_R;
+    Eigen::Matrix<double, 9, 1> J_R_v1, J_R_v2, J_R_v3;
+
+    Eigen::Matrix3d Dg;
+    Eigen::Matrix<double, 9,1> vDg;
+    Eigen::Matrix<double, 1,9> J_g;
+    Eigen::Matrix<double, 1,3> Jlosscov;
+
+    Eigen::Matrix<double, 6, 6> Hi2;
+    Eigen::Matrix<double, 6, 1> bi2;
+
+    // initialize J_R.
+    G1 << 0, 0, 0,
+          0, 0, -1,
+          0, 1, 0;
+    G2 << 0, 0, 1,
+          0, 0, 0,
+          -1, 0, 0;
+    G3 << 0, -1, 0,
+          1, 0, 0,
+          0, 0, 0;    
+    G1R = G1 * cR;
+    G2R = G2 * cR;
+    G3R = G3 * cR;
+    
+    J_R_v1 = Eigen::Map<const Eigen::Matrix<double, 9,1>>(G1R.data(), G1R.size());    
+    J_R_v2 = Eigen::Map<const Eigen::Matrix<double, 9,1>>(G2R.data(), G2R.size());    
+    J_R_v3 = Eigen::Map<const Eigen::Matrix<double, 9,1>>(G3R.data(), G3R.size());    
+    
+    J_R.setZero();
+    J_R.block<9,1>(0,0) = J_R_v1;
+    J_R.block<9,1>(0,1) = J_R_v2;
+    J_R.block<9,1>(0,2) = J_R_v3;
+
+    // initialize J_g.
+    Dg = cAiT*cRT*cBT + cAT*cRT*cBiT  + cAi*cRT*cB  + cA*cRT*cBi ;
+    vDg = Eigen::Map<const Eigen::Matrix<double,9,1>>(Dg.data(), Dg.size());
+    J_g = vDg.transpose();
+
+    Jlosscov = J_g * J_R; // 1x9 * 9x3 = 1x3
+    w = w_cov;
+    bi2.setZero();
+    bi2.block<3,1>(0,0) = w * Jlosscov.transpose();
+
+    // compute Hessian of Covariance cost function.
+    Eigen::Matrix<double, 9, 9> H_g;
+
+    // initialize H_g.
+    H_g = KroneckerProduct3333(cB, cAiT) + KroneckerProduct3333(cBi, cAT) + KroneckerProduct3333(cBT, cAi) + KroneckerProduct3333(cBiT, cA);
+    H_g = H_g * K33_;
+
+    Hi2.setZero();
+    Hi2.block<3,3>(0, 0) = w * J_R.transpose() * H_g * J_R;
+
+    // update normal matrix.
+    Hs[thread_num] += Hi2;
+    bs[thread_num] += bi2;    
   }
 
   if (H && b) {

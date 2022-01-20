@@ -99,6 +99,17 @@ align result:
           0           0           0           1
 ```
 
+
+#### Newton method involved with ICP and covariance cost function together.
+- Newton optimization
+* accuracy:
+```bash
+   0.999905   0.0136979 -0.00152955    0.488704
+ -0.0137038    0.999898 -0.00391775    0.115806
+ 0.00147573  0.00393834    0.999991  -0.0297435
+          0           0           0           1
+```
+
 #### Alignment quality Comparison: 
 Zoom in details. 
 <center class="half"> 
@@ -112,11 +123,11 @@ Zoom in details.
 * Official implementation of Fast-GICP. [fast-gicp implementation](https://github.com/SMRT-AIST/fast_gicp).
 * Another implementation of Fast-GICP using Ceres. [fastgicp re-implementation](https://github.com/FishInWave/fast-gicp).
 
-## TODO.
-* Current implementation only uses ICP cost, the covariance rotation cost function is not successfully added. (due to instable convex optimization of trace terms. )
-* Find Hessian matrix of E_{ICP} and E_{COV} and implement Newton method mentioned in the paper.
+## TODO. [DONE]
+~~* Current implementation only uses ICP cost, the covariance rotation cost function is not successfully added. (due to instable convex optimization of trace terms. )~~
+~~* Find Hessian matrix of E_{ICP} and E_{COV} and implement Newton method mentioned in the paper.~~
 
-The Hessian of ICP cost is added in current implenentation, but the contribution on accuracy improvement is negligible. This proves that jacobian approximatin is good enough for hessian computation.
+~~The Hessian of ICP cost is added in current implenentation, but the contribution on accuracy improvement is negligible. This proves that jacobian approximatin is good enough for hessian computation.~~
 
 **Someone interested in the derivation process of Hessian matrix and Jacobian matrix, please refer to "litamin2_derivatives.pdf".**
 

@@ -92,6 +92,7 @@ protected:
 
   bool useCovarianceCost_;
 
+  Eigen::Matrix<double, 9, 9> K33_;
 
 };
 
