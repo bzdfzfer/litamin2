@@ -13,6 +13,7 @@
 #include "fast_gicp/gicp/fast_gicp.hpp"
 #include "fast_gicp/gicp/impl/fast_gicp_impl.hpp"
 #include "litamin2/litamin2point2voxel.hpp"
+#include "litamin2/litamin2point2voxelnewton.hpp"
 
 using namespace litamin;
 using namespace std;
@@ -47,6 +48,7 @@ int main(int argc, char** argv) {
 
 
   litamin::LiTAMIN2Point2Voxel<pcl::PointXYZ, pcl::PointXYZ> litamin2;
+  // litamin::LiTAMIN2Point2VoxelNewton<pcl::PointXYZ, pcl::PointXYZ> litamin2;
   litamin2.setNumThreads(4);
   litamin2.setResolution(3.0);
   litamin2.setMaxCorrespondenceDistance(1.0);

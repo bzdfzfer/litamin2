@@ -81,19 +81,19 @@ void test(Registration& reg, const pcl::PointCloud<pcl::PointXYZ>::ConstPtr& tar
   std::cout << "single:" << single << "[msec] " << std::endl;
 
   // // 100 times
-  t1 = std::chrono::high_resolution_clock::now();
-  for (int i = 0; i < 100; i++) {
-    reg.clearTarget();
-    reg.clearSource();
-    reg.setInputTarget(target);
-    reg.setInputSource(source);
-    reg.align(*aligned);
-  }
-  t2 = std::chrono::high_resolution_clock::now();
-  double multi = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count() / 1e6;
-  std::cout << "100 times:" << multi << "[msec] " << std::flush;
+  // t1 = std::chrono::high_resolution_clock::now();
+  // for (int i = 0; i < 100; i++) {
+  //   reg.clearTarget();
+  //   reg.clearSource();
+  //   reg.setInputTarget(target);
+  //   reg.setInputSource(source);
+  //   reg.align(*aligned);
+  // }
+  // t2 = std::chrono::high_resolution_clock::now();
+  // double multi = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count() / 1e6;
+  // std::cout << "100 times:" << multi << "[msec] " << std::flush;
 
-  std::cout << "  , average time: " << multi/100 << "[msec] "<< std::endl;
+  // std::cout << "  , average time: " << multi/100 << "[msec] "<< std::endl;
 
   // // for some tasks like odometry calculation,
   // // you can reuse the covariances of a source point cloud in the next registration

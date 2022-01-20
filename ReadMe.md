@@ -104,10 +104,7 @@ align result:
 - Newton optimization
 * accuracy:
 ```bash
-   0.999905   0.0136979 -0.00152955    0.488704
- -0.0137038    0.999898 -0.00391775    0.115806
- 0.00147573  0.00393834    0.999991  -0.0297435
-          0           0           0           1
+TO BE Debuged ....
 ```
 
 #### Alignment quality Comparison: 
@@ -134,8 +131,10 @@ Zoom in details.
 ~~**If someone knows how to compute the derivative of trace with respect to lie so(3), please teach my in the issue.**~~
 
 **I have derived the jacobian and hessian matrix of COVARIANCE cost part in "[litamin2_derivatives.pdf](litamin2_derivatives.pdf)".**
+
 **The implementation of this part is coded at "[litamin2point2voxelnewton_impl.hpp](include/litamin2/impl/litamin2point2voxelnewton_impl.hpp)".**
 
+**!!!!(Sad story) New added jacobian and hessian did not test passed !!!！**
 
 ## KITTI dataset.
 The KITTI odometry dataset is used to run this algorithm, part of seq 00 is shown below.

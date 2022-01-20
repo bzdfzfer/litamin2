@@ -81,19 +81,19 @@ void test(Registration& reg, const pcl::PointCloud<pcl::PointXYZ>::ConstPtr& tar
   std::cout << "single:" << single << "[msec] " << std::endl;
 
   // // 100 times
-  t1 = std::chrono::high_resolution_clock::now();
-  for (int i = 0; i < 100; i++) {
-    reg.clearTarget();
-    reg.clearSource();
-    reg.setInputTarget(target);
-    reg.setInputSource(source);
-    reg.align(*aligned);
-  }
-  t2 = std::chrono::high_resolution_clock::now();
-  double multi = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count() / 1e6;
-  std::cout << "100 times:" << multi << "[msec] " << std::flush;
+  // t1 = std::chrono::high_resolution_clock::now();
+  // for (int i = 0; i < 100; i++) {
+  //   reg.clearTarget();
+  //   reg.clearSource();
+  //   reg.setInputTarget(target);
+  //   reg.setInputSource(source);
+  //   reg.align(*aligned);
+  // }
+  // t2 = std::chrono::high_resolution_clock::now();
+  // double multi = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count() / 1e6;
+  // std::cout << "100 times:" << multi << "[msec] " << std::flush;
 
-  std::cout << "  , average time: " << multi/100 << "[msec] "<< std::endl;
+  // std::cout << "  , average time: " << multi/100 << "[msec] "<< std::endl;
 
   // // for some tasks like odometry calculation,
   // // you can reuse the covariances of a source point cloud in the next registration
@@ -164,9 +164,11 @@ int main(int argc, char** argv) {
   std::cout << "--- LiTAMIN2Point2VoxelNewton_test ---" << std::endl;
   litamin::LiTAMIN2Point2VoxelNewton<pcl::PointXYZ, pcl::PointXYZ> litamin2_test;
   // fast_gicp uses all the CPU cores by default
-  litamin2_test.setNumThreads(8);
-  litamin2_test.setMaxCorrespondenceDistance(0.5);
+  litamin2_test.setNumThreads(4);
+  litamin2_test.setResolution(3.0);
+  litamin2_test.setMaxCorrespondenceDistance(1.0);
   litamin2_test.setTransformationEpsilon(1e-2);
+  litamin2_test.setMaximumIterations(64);
   test(litamin2_test, target_cloud, source_cloud);
 
   // std::cout << "--- fgicp_ceres ---" << std::endl;

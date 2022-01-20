@@ -24,6 +24,8 @@
 
 using namespace fast_gicp;
 
+#define COV_JH 1
+
 namespace litamin{
 
 template <typename PointSource, typename PointTarget>
@@ -255,33 +257,30 @@ double LiTAMIN2Point2VoxelNewton<PointSource, PointTarget>::linearize(const Eige
     Eigen::Matrix<double, 6, 1> bi = w * jlossexp.transpose() * voxel_mahalanobis_[i] * error;
 
     // add the second part to Hs.
-    // Eigen::Matrix<double, 6, 6> Hi2;
-    // Hi2.setZero();
-    // Eigen::Matrix<double, 4, 6> tmp_Je1, tmp_Je2, tmp_Je3;
-    // tmp_Je1.setZero();
-    // tmp_Je2.setZero();
-    // tmp_Je3.setZero();
+    Eigen::Matrix<double, 6, 6> Hi2;
+    Hi2.setZero();
+    Eigen::Matrix<double, 4, 6> tmp_Je1, tmp_Je2, tmp_Je3;
+    tmp_Je1.setZero();
+    tmp_Je2.setZero();
+    tmp_Je3.setZero();
     
-    // tmp_Je1.block<1,6>(1,0) = - jlossexp.block<1,6>(2,0);
-    // tmp_Je1.block<1,6>(2,0) = jlossexp.block<1,6>(1,0);
+    tmp_Je1.block<1,6>(1,0) = - jlossexp.block<1,6>(2,0);
+    tmp_Je1.block<1,6>(2,0) = jlossexp.block<1,6>(1,0);
 
-    // tmp_Je2.block<1,6>(0,0) = jlossexp.block<1,6>(2,0);
-    // tmp_Je2.block<1,6>(2,0) = -jlossexp.block<1,6>(0,0);
+    tmp_Je2.block<1,6>(0,0) = jlossexp.block<1,6>(2,0);
+    tmp_Je2.block<1,6>(2,0) = -jlossexp.block<1,6>(0,0);
 
-    // tmp_Je3.block<1,6>(0,0) = -jlossexp.block<1,6>(1,0);
-    // tmp_Je3.block<1,6>(1,0) = jlossexp.block<1,6>(0,0);
+    tmp_Je3.block<1,6>(0,0) = -jlossexp.block<1,6>(1,0);
+    tmp_Je3.block<1,6>(1,0) = jlossexp.block<1,6>(0,0);
 
-    // Hi2.block<1,6>(0,0) = w * error.transpose() * voxel_mahalanobis_[i] * tmp_Je1;
-    // Hi2.block<1,6>(1,0) = w * error.transpose() * voxel_mahalanobis_[i] * tmp_Je2;
-    // Hi2.block<1,6>(2,0) = w * error.transpose() * voxel_mahalanobis_[i] * tmp_Je3;
+    Hi2.block<1,6>(0,0) = w * error.transpose() * voxel_mahalanobis_[i] * tmp_Je1;
+    Hi2.block<1,6>(1,0) = w * error.transpose() * voxel_mahalanobis_[i] * tmp_Je2;
+    Hi2.block<1,6>(2,0) = w * error.transpose() * voxel_mahalanobis_[i] * tmp_Je3;
 
 
-    int thread_num = omp_get_thread_num();
-    Hs[thread_num] += Hi;
-    bs[thread_num] += bi;
-    // Hs[thread_num] += Hi2;
 
-    // A is p, B is q.
+
+#if COV_JH
     // compute jacobian of Covariance cost function.
     Eigen::Matrix3d G1, G2, G3;
     Eigen::Matrix3d G1R, G2R, G3R;
@@ -293,8 +292,8 @@ double LiTAMIN2Point2VoxelNewton<PointSource, PointTarget>::linearize(const Eige
     Eigen::Matrix<double, 1,9> J_g;
     Eigen::Matrix<double, 1,3> Jlosscov;
 
-    Eigen::Matrix<double, 6, 6> Hi2;
-    Eigen::Matrix<double, 6, 1> bi2;
+    Eigen::Matrix<double, 6, 6> Hci;
+    Eigen::Matrix<double, 6, 1> bci;
 
     // initialize J_R.
     G1 << 0, 0, 0,
@@ -319,6 +318,7 @@ double LiTAMIN2Point2VoxelNewton<PointSource, PointTarget>::linearize(const Eige
     J_R.block<9,1>(0,1) = J_R_v2;
     J_R.block<9,1>(0,2) = J_R_v3;
 
+    // A is p, B is q.
     // initialize J_g.
     Dg = cAiT*cRT*cBT + cAT*cRT*cBiT  + cAi*cRT*cB  + cA*cRT*cBi ;
     vDg = Eigen::Map<const Eigen::Matrix<double,9,1>>(Dg.data(), Dg.size());
@@ -326,22 +326,35 @@ double LiTAMIN2Point2VoxelNewton<PointSource, PointTarget>::linearize(const Eige
 
     Jlosscov = J_g * J_R; // 1x9 * 9x3 = 1x3
     w = w_cov;
-    bi2.setZero();
-    bi2.block<3,1>(0,0) = w * Jlosscov.transpose();
+    bci.setZero();
+    bci.block<3,1>(0,0) = w * Jlosscov.transpose();
+
+    // cout << "J_phi: \n" << Jlosscov << endl;
 
     // compute Hessian of Covariance cost function.
     Eigen::Matrix<double, 9, 9> H_g;
-
+    Eigen::Matrix<double, 3, 3> H_phi;
     // initialize H_g.
     H_g = KroneckerProduct3333(cB, cAiT) + KroneckerProduct3333(cBi, cAT) + KroneckerProduct3333(cBT, cAi) + KroneckerProduct3333(cBiT, cA);
     H_g = H_g * K33_;
+    H_phi = J_R.transpose() * H_g * J_R;
+    
+    // cout << "H_phi: \n" << H_phi << endl;
 
-    Hi2.setZero();
-    Hi2.block<3,3>(0, 0) = w * J_R.transpose() * H_g * J_R;
+    Hci.setZero();
+    Hci.block<3,3>(0, 0) = w * H_phi;
 
-    // update normal matrix.
+#endif
+    int thread_num = omp_get_thread_num();
+    Hs[thread_num] += Hi;
+    bs[thread_num] += bi;
     Hs[thread_num] += Hi2;
-    bs[thread_num] += bi2;    
+
+#if COV_JH    
+    // update normal matrix.
+    // Hs[thread_num] += Hci;
+    // bs[thread_num] += bci; 
+#endif
   }
 
   if (H && b) {
